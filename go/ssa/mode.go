@@ -29,6 +29,7 @@ const (
 	GlobalDebug                                  // Enable debug info for all packages
 	BareInits                                    // Build init functions without guards or calls to dependent inits
 	InstantiateGenerics                          // Instantiate generics functions (monomorphize) while building
+	StringPreserve                               // Do not trim literal strings
 )
 
 const BuilderModeDoc = `Options controlling the SSA builder.
@@ -42,6 +43,7 @@ L	build distinct packages seria[L]ly instead of in parallel.
 N	build [N]aive SSA form: don't replace local loads/stores with registers.
 I	build bare [I]nit functions: no init guards or calls to dependent inits.
 G   instantiate [G]eneric function bodies via monomorphization
+W   preserve length of lit[E]ral strings
 `
 
 func (m BuilderMode) String() string {
@@ -73,6 +75,9 @@ func (m BuilderMode) String() string {
 	if m&InstantiateGenerics != 0 {
 		buf.WriteByte('G')
 	}
+	if m&StringPreserve != 0 {
+		buf.WriteByte('E')
+	}
 	return buf.String()
 }
 
@@ -99,6 +104,8 @@ func (m *BuilderMode) Set(s string) error {
 			mode |= BareInits
 		case 'G':
 			mode |= InstantiateGenerics
+		case 'E':
+			mode |= StringPreserve
 		default:
 			return fmt.Errorf("unknown BuilderMode option: %q", c)
 		}

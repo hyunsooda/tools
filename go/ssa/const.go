@@ -67,19 +67,19 @@ func zeroConst(t types.Type) *Const {
 	panic(fmt.Sprint("zeroConst: unexpected ", t))
 }
 
-func (c *Const) RelString(from *types.Package) string {
+func (c *Const) RelString(preserve bool, from *types.Package) string {
 	var s string
 	if c.Value == nil {
 		s = "nil"
 	} else if c.Value.Kind() == constant.String {
 		s = constant.StringVal(c.Value)
-		/*
+		if !preserve {
 			const max = 20
 			// TODO(adonovan): don't cut a rune in half.
 			if len(s) > max {
 				s = s[:max-3] + "..." // abbreviate
 			}
-		*/
+		}
 		s = strconv.Quote(s)
 	} else {
 		s = c.Value.String()
@@ -88,7 +88,7 @@ func (c *Const) RelString(from *types.Package) string {
 }
 
 func (c *Const) Name() string {
-	return c.RelString(nil)
+	return c.RelString(true, nil)
 }
 
 func (c *Const) String() string {

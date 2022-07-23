@@ -33,7 +33,7 @@ func relName(v Value, i Instruction) string {
 	case Member: // *Function or *Global
 		return v.RelString(from)
 	case *Const:
-		return v.RelString(from)
+		return v.RelString(i.Parent().Prog.mode&StringPreserve != 0, from)
 	}
 	return v.Name()
 }
@@ -410,7 +410,7 @@ func WritePackage(buf *bytes.Buffer, p *Package) {
 		switch mem := p.Members[name].(type) {
 		case *NamedConst:
 			fmt.Fprintf(buf, "  const %-*s %s = %s\n",
-				maxname, name, mem.Name(), mem.Value.RelString(from))
+				maxname, name, mem.Name(), mem.Value.RelString(p.Prog.mode&StringPreserve != 0, from))
 
 		case *Function:
 			fmt.Fprintf(buf, "  func  %-*s %s\n",
