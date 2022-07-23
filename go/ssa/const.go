@@ -73,11 +73,13 @@ func (c *Const) RelString(from *types.Package) string {
 		s = "nil"
 	} else if c.Value.Kind() == constant.String {
 		s = constant.StringVal(c.Value)
-		const max = 20
-		// TODO(adonovan): don't cut a rune in half.
-		if len(s) > max {
-			s = s[:max-3] + "..." // abbreviate
-		}
+		/*
+			const max = 20
+			// TODO(adonovan): don't cut a rune in half.
+			if len(s) > max {
+				s = s[:max-3] + "..." // abbreviate
+			}
+		*/
 		s = strconv.Quote(s)
 	} else {
 		s = c.Value.String()
