@@ -304,7 +304,10 @@ func (s *Go) String() string {
 }
 
 func (s *Panic) String() string {
-	return "panic " + relName(s.X, s)
+	fileLoc := s.Parent().Prog.Fset.Position(s.Pos())
+	panicInstrStr := "panic " + relName(s.X, s)
+	panicLocStr := fmt.Sprintf("; %s --> %s", panicInstrStr, fileLoc)
+	return fmt.Sprintf("%s\n\t%s", panicInstrStr, panicLocStr)
 }
 
 func (s *Return) String() string {
@@ -364,18 +367,26 @@ func (s *MapUpdate) String() string {
 }
 
 func (s *DebugRef) String() string {
-	p := s.Parent().Prog.Fset.Position(s.Pos())
-	var descr interface{}
-	if s.object != nil {
-		descr = s.object // e.g. "var x int"
+	if s.Expr != nil {
+		p := s.Parent().Prog.Fset.Position(s.Pos())
+		var descr interface{}
+		if s.object != nil {
+			descr = s.object // e.g. "var x int"
+		} else {
+			descr = reflect.TypeOf(s.Expr) // e.g. "*ast.CallExpr"
+		}
+		var addr string
+		if s.IsAddr {
+			addr = "address of "
+		}
+		fileLoc := s.Parent().Prog.Fset.Position(s.Expr.Pos())
+		return fmt.Sprintf("; %s%s @ %d:%d is %s --> %s", addr, descr, p.Line, p.Column, s.X.Name(), fileLoc)
 	} else {
-		descr = reflect.TypeOf(s.Expr) // e.g. "*ast.CallExpr"
+		fileLoc := s.Parent().Prog.Fset.Position(s.Tpos)
+		blkInstrs := s.Block().Instrs
+		lastInstr := blkInstrs[len(blkInstrs)-1]
+		return fmt.Sprintf("; [if loc]: %s ----> %s", lastInstr.String(), fileLoc)
 	}
-	var addr string
-	if s.IsAddr {
-		addr = "address of "
-	}
-	return fmt.Sprintf("; %s%s @ %d:%d is %s", addr, descr, p.Line, p.Column, s.X.Name())
 }
 
 func (p *Package) String() string {

@@ -40,13 +40,13 @@ func (a *address) store(fn *Function, v Value) {
 	store := emitStore(fn, a.addr, v, a.pos)
 	if a.expr != nil {
 		// store.Val is v, converted for assignability.
-		emitDebugRef(fn, a.expr, store.Val, false)
+		emitDebugRef(fn, a.expr, store.Val, false, token.Pos(0))
 	}
 }
 
 func (a *address) address(fn *Function) Value {
 	if a.expr != nil {
-		emitDebugRef(fn, a.expr, a.addr, true)
+		emitDebugRef(fn, a.expr, a.addr, true, token.Pos(0))
 	}
 	return a.addr
 }

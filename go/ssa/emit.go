@@ -34,7 +34,7 @@ func emitLoad(f *Function, addr Value) *UnOp {
 
 // emitDebugRef emits to f a DebugRef pseudo-instruction associating
 // expression e with value v.
-func emitDebugRef(f *Function, e ast.Expr, v Value, isAddr bool) {
+func emitDebugRef(f *Function, e ast.Expr, v Value, isAddr bool, pos token.Pos) {
 	if !f.debugInfo() {
 		return // debugging not enabled
 	}
@@ -57,7 +57,17 @@ func emitDebugRef(f *Function, e ast.Expr, v Value, isAddr bool) {
 		X:      v,
 		Expr:   e,
 		IsAddr: isAddr,
+		Tpos:   pos,
 		object: obj,
+	})
+}
+
+func emitIfLoc(f *Function, pos token.Pos) {
+	f.emit(&DebugRef{
+		Expr:   nil,
+		IsAddr: false,
+		Tpos:   pos,
+		object: nil,
 	})
 }
 
@@ -415,7 +425,7 @@ func emitFieldSelection(f *Function, v Value, index int, wantAddr bool, id *ast.
 		instr.setType(fld.Type())
 		v = f.emit(instr)
 	}
-	emitDebugRef(f, id, v, wantAddr)
+	emitDebugRef(f, id, v, wantAddr, token.Pos(0))
 	return v
 }
 

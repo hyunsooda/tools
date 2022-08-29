@@ -114,6 +114,8 @@ import (
 	"golang.org/x/tools/internal/typeparams"
 )
 
+const reservedIfDebugString = "akohvpnerhjnvkrrwgzojywdihjrrhjf"
+
 type opaqueType struct {
 	types.Type
 	name string
@@ -190,6 +192,16 @@ func (b *builder) cond(fn *Function, e ast.Expr, t, f *BasicBlock) {
 	// The value of a constant condition may be platform-specific,
 	// and may cause blocks that are reachable in some configuration
 	// to be hidden from subsequent analyses such as bug-finding tools.
+	//fmt.Println("KKKKKKKKKKKKKKKKKKKKK", fn.Prog.Fset.Position(e.Pos()))
+
+	/*
+		v := b.expr(fn, e)
+		reservedValue := NewConst(constant.MakeString(reservedIfDebugString), fn.typeOf(e))
+		emitDebugRef(fn, e, reservedValue, false, token.Pos(0))
+		emitIf(fn, v, t, f)
+	*/
+
+	emitIfLoc(fn, e.Pos())
 	emitIf(fn, b.expr(fn, e), t, f)
 }
 
@@ -571,7 +583,7 @@ func (b *builder) assign(fn *Function, loc lvalue, e ast.Expr, isZero bool, sb *
 				// slice and map are handled by store ops in compLit.
 				switch loc.typ().Underlying().(type) {
 				case *types.Struct, *types.Array:
-					emitDebugRef(fn, e, addr, true)
+					emitDebugRef(fn, e, addr, true, token.Pos(0))
 				}
 
 				return
@@ -610,7 +622,7 @@ func (b *builder) expr(fn *Function, e ast.Expr) Value {
 		v = b.expr0(fn, e, tv)
 	}
 	if fn.debugInfo() {
-		emitDebugRef(fn, e, v, false)
+		emitDebugRef(fn, e, v, false, token.Pos(0))
 	}
 	return v
 }
@@ -1119,7 +1131,7 @@ func (b *builder) localValueSpec(fn *Function, spec *ast.ValueSpec) {
 			if !isBlankIdent(id) {
 				lhs := fn.addLocalForIdent(id)
 				if fn.debugInfo() {
-					emitDebugRef(fn, id, lhs, true)
+					emitDebugRef(fn, id, lhs, true, token.Pos(0))
 				}
 			}
 		}
@@ -1173,7 +1185,7 @@ func (b *builder) assignStmt(fn *Function, lhss, rhss []ast.Expr, isDef bool) {
 	} else {
 		// e.g. x, y = pos()
 		tuple := b.exprN(fn, rhss[0])
-		emitDebugRef(fn, rhss[0], tuple, false)
+		emitDebugRef(fn, rhss[0], tuple, false, token.Pos(0))
 		for i, lval := range lvals {
 			lval.store(fn, emitExtract(fn, tuple, i))
 		}
@@ -1409,6 +1421,7 @@ func (b *builder) switchStmt(fn *Function, s *ast.SwitchStmt, label *lblock) {
 			// followed by If.  Don't forget conversions
 			// though.
 			cond := emitCompare(fn, token.EQL, tag, b.expr(fn, cond), cond.Pos())
+			emitIfLoc(fn, cond.Pos())
 			emitIf(fn, cond, body, nextCond)
 			fn.currentBlock = nextCond
 		}
@@ -1524,6 +1537,7 @@ func (b *builder) typeSwitchStmt(fn *Function, s *ast.TypeSwitchStmt, label *lbl
 				ti = emitExtract(fn, yok, 0)
 				condv = emitExtract(fn, yok, 1)
 			}
+			emitIfLoc(fn, cond.Pos())
 			emitIf(fn, condv, body, next)
 			fn.currentBlock = next
 		}
@@ -1683,6 +1697,7 @@ func (b *builder) selectStmt(fn *Function, s *ast.SelectStmt, label *lblock) {
 		}
 		body := fn.newBasicBlock("select.body")
 		next := fn.newBasicBlock("select.next")
+		emitIfLoc(fn, s.Select)
 		emitIf(fn, emitCompare(fn, token.EQL, idx, intConst(int64(state)), token.NoPos), body, next)
 		fn.currentBlock = body
 		fn.targets = &targets{
@@ -1693,7 +1708,7 @@ func (b *builder) selectStmt(fn *Function, s *ast.SelectStmt, label *lblock) {
 		case *ast.ExprStmt: // <-ch
 			if debugInfo {
 				v := emitExtract(fn, sel, r)
-				emitDebugRef(fn, states[state].DebugNode.(ast.Expr), v, false)
+				emitDebugRef(fn, states[state].DebugNode.(ast.Expr), v, false, token.Pos(0))
 			}
 			r++
 
@@ -1704,7 +1719,7 @@ func (b *builder) selectStmt(fn *Function, s *ast.SelectStmt, label *lblock) {
 			x := b.addr(fn, comm.Lhs[0], false) // non-escaping
 			v := emitExtract(fn, sel, r)
 			if debugInfo {
-				emitDebugRef(fn, states[state].DebugNode.(ast.Expr), v, false)
+				emitDebugRef(fn, states[state].DebugNode.(ast.Expr), v, false, token.Pos(0))
 			}
 			x.store(fn, v)
 
@@ -1850,6 +1865,7 @@ func (b *builder) rangeIndexed(fn *Function, x Value, tv types.Type, pos token.P
 
 	body := fn.newBasicBlock("rangeindex.body")
 	done = fn.newBasicBlock("rangeindex.done")
+	emitIfLoc(fn, incr.Pos())
 	emitIf(fn, emitCompare(fn, token.LSS, incr, length, token.NoPos), body, done)
 	fn.currentBlock = body
 
@@ -1940,6 +1956,7 @@ func (b *builder) rangeIter(fn *Function, x Value, tk, tv types.Type, pos token.
 
 	body := fn.newBasicBlock("rangeiter.body")
 	done = fn.newBasicBlock("rangeiter.done")
+	emitIfLoc(fn, pos)
 	emitIf(fn, emitExtract(fn, okv, 0), body, done)
 	fn.currentBlock = body
 
@@ -1985,6 +2002,7 @@ func (b *builder) rangeChan(fn *Function, x Value, tk types.Type, pos token.Pos)
 	ko := fn.emit(recv)
 	body := fn.newBasicBlock("rangechan.body")
 	done = fn.newBasicBlock("rangechan.done")
+	emitIfLoc(fn, pos)
 	emitIf(fn, emitExtract(fn, ko, 1), body, done)
 	fn.currentBlock = body
 	if tk != nil {
@@ -2442,6 +2460,7 @@ func (p *Package) build() {
 		initguard := p.Var("init$guard")
 		doinit := init.newBasicBlock("init.start")
 		done = init.newBasicBlock("init.done")
+		emitIfLoc(init, initguard.Pos())
 		emitIf(init, emitLoad(init, initguard), done, doinit)
 		init.currentBlock = doinit
 		emitStore(init, initguard, vTrue, token.NoPos)

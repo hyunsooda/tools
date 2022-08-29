@@ -1269,6 +1269,7 @@ type DebugRef struct {
 	object types.Object // the identity of the source var/func
 	IsAddr bool         // Expr is addressable and X is the address it denotes
 	X      Value        // the value or address of Expr
+	Tpos   token.Pos
 }
 
 // Embeddable mix-ins and helpers for common parts of other structs. -----------
