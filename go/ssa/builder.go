@@ -114,8 +114,6 @@ import (
 	"golang.org/x/tools/internal/typeparams"
 )
 
-const reservedIfDebugString = "akohvpnerhjnvkrrwgzojywdihjrrhjf"
-
 type opaqueType struct {
 	types.Type
 	name string
@@ -192,15 +190,6 @@ func (b *builder) cond(fn *Function, e ast.Expr, t, f *BasicBlock) {
 	// The value of a constant condition may be platform-specific,
 	// and may cause blocks that are reachable in some configuration
 	// to be hidden from subsequent analyses such as bug-finding tools.
-	//fmt.Println("KKKKKKKKKKKKKKKKKKKKK", fn.Prog.Fset.Position(e.Pos()))
-
-	/*
-		v := b.expr(fn, e)
-		reservedValue := NewConst(constant.MakeString(reservedIfDebugString), fn.typeOf(e))
-		emitDebugRef(fn, e, reservedValue, false, token.Pos(0))
-		emitIf(fn, v, t, f)
-	*/
-
 	emitIfLoc(fn, e.Pos())
 	emitIf(fn, b.expr(fn, e), t, f)
 }
