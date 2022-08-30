@@ -604,7 +604,16 @@ func WriteFunction(buf *bytes.Buffer, f *Function) {
 		if false { // CFG debugging
 			fmt.Fprintf(buf, "\t# CFG: %s --> %s --> %s\n", b.Preds, b, b.Succs)
 		}
-		for _, instr := range b.Instrs {
+
+		instrs := b.Instrs
+		if ifInstr, ok := b.Instrs[len(b.Instrs)-1].(*If); ok {
+			ifLocInstr := b.Instrs[len(b.Instrs)-2]
+			instrs = b.Instrs[:len(b.Instrs)-2]
+			instrs = append(instrs, ifInstr)
+			instrs = append(instrs, ifLocInstr)
+		}
+
+		for _, instr := range instrs {
 			buf.WriteString("\t")
 			switch v := instr.(type) {
 			case Value:

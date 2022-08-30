@@ -87,7 +87,12 @@ func findDuplicate(blocks []*BasicBlock) *BasicBlock {
 
 func (s *sanity) checkInstr(idx int, instr Instruction) {
 	switch instr := instr.(type) {
-	case *If, *Jump, *Return, *Panic:
+	case *If:
+		// `IfLoc(DebugRef)` is a last instruction of each basic block
+		if idx != len(s.block.Instrs)-2 {
+			s.errorf("control flow instruction not at end of block")
+		}
+	case *Jump, *Return, *Panic:
 		s.errorf("control flow instruction not at end of block")
 	case *Phi:
 		if idx == 0 {
@@ -103,7 +108,6 @@ func (s *sanity) checkInstr(idx int, instr Instruction) {
 		}
 		if ne, np := len(instr.Edges), len(s.block.Preds); ne != np {
 			s.errorf("phi node has %d edges but %d predecessors", ne, np)
-
 		} else {
 			for i, e := range instr.Edges {
 				if e == nil {
@@ -153,7 +157,6 @@ func (s *sanity) checkInstr(idx int, instr Instruction) {
 		if numFree != numBind {
 			s.errorf("MakeClosure has %d Bindings for function %s with %d free vars",
 				numBind, instr.Fn, numFree)
-
 		}
 		if recv := instr.Type().(*types.Signature).Recv(); recv != nil {
 			s.errorf("MakeClosure's type includes receiver %s", recv.Type())
@@ -219,7 +222,6 @@ func (s *sanity) checkFinalInstr(instr Instruction) {
 			s.errorf("If-instruction has same True, False target blocks: %s", s.block.Succs[0])
 			return
 		}
-
 	case *Jump:
 		if nsuccs := len(s.block.Succs); nsuccs != 1 {
 			s.errorf("Jump-terminated block has %d successors; expected 1", nsuccs)
@@ -240,6 +242,9 @@ func (s *sanity) checkFinalInstr(instr Instruction) {
 			s.errorf("Panic-terminated block has %d successors; expected none", nsuccs)
 			return
 		}
+
+	case *DebugRef:
+		return
 
 	default:
 		s.errorf("non-control flow instruction at end of block")
@@ -461,7 +466,6 @@ func (s *sanity) checkFunction(fn *Function) bool {
 			}
 			if !types.Identical(p.Type(), sig.Params().At(j).Type()) {
 				s.errorf("Param %s at index %d has wrong type (%s, versus %s in Signature)", p.Name(), i, p.Type(), sig.Params().At(j).Type())
-
 			}
 		}
 		s.checkReferrerList(p)
