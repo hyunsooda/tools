@@ -190,8 +190,10 @@ func (b *builder) cond(fn *Function, e ast.Expr, t, f *BasicBlock) {
 	// The value of a constant condition may be platform-specific,
 	// and may cause blocks that are reachable in some configuration
 	// to be hidden from subsequent analyses such as bug-finding tools.
+
+	v := b.expr(fn, e)
 	emitIfLoc(fn, e.Pos())
-	emitIf(fn, b.expr(fn, e), t, f)
+	emitIf(fn, v, t, f)
 }
 
 // logicalBinop emits code to fn to evaluate e, a &&- or
@@ -1686,8 +1688,11 @@ func (b *builder) selectStmt(fn *Function, s *ast.SelectStmt, label *lblock) {
 		}
 		body := fn.newBasicBlock("select.body")
 		next := fn.newBasicBlock("select.next")
+
+		v := emitCompare(fn, token.EQL, idx, intConst(int64(state)), token.NoPos)
 		emitIfLoc(fn, s.Select)
-		emitIf(fn, emitCompare(fn, token.EQL, idx, intConst(int64(state)), token.NoPos), body, next)
+		emitIf(fn, v, body, next)
+
 		fn.currentBlock = body
 		fn.targets = &targets{
 			tail:   fn.targets,
@@ -1854,8 +1859,10 @@ func (b *builder) rangeIndexed(fn *Function, x Value, tv types.Type, pos token.P
 
 	body := fn.newBasicBlock("rangeindex.body")
 	done = fn.newBasicBlock("rangeindex.done")
+	comp := emitCompare(fn, token.LSS, incr, length, token.NoPos)
 	emitIfLoc(fn, incr.Pos())
-	emitIf(fn, emitCompare(fn, token.LSS, incr, length, token.NoPos), body, done)
+	emitIf(fn, comp, body, done)
+
 	fn.currentBlock = body
 
 	k = emitLoad(fn, index)
@@ -1945,8 +1952,9 @@ func (b *builder) rangeIter(fn *Function, x Value, tk, tv types.Type, pos token.
 
 	body := fn.newBasicBlock("rangeiter.body")
 	done = fn.newBasicBlock("rangeiter.done")
+	extract := emitExtract(fn, okv, 0)
 	emitIfLoc(fn, pos)
-	emitIf(fn, emitExtract(fn, okv, 0), body, done)
+	emitIf(fn, extract, body, done)
 	fn.currentBlock = body
 
 	if tk != tInvalid {
@@ -1991,8 +1999,9 @@ func (b *builder) rangeChan(fn *Function, x Value, tk types.Type, pos token.Pos)
 	ko := fn.emit(recv)
 	body := fn.newBasicBlock("rangechan.body")
 	done = fn.newBasicBlock("rangechan.done")
+	extract := emitExtract(fn, ko, 1)
 	emitIfLoc(fn, pos)
-	emitIf(fn, emitExtract(fn, ko, 1), body, done)
+	emitIf(fn, extract, body, done)
 	fn.currentBlock = body
 	if tk != nil {
 		k = emitExtract(fn, ko, 0)
@@ -2449,8 +2458,9 @@ func (p *Package) build() {
 		initguard := p.Var("init$guard")
 		doinit := init.newBasicBlock("init.start")
 		done = init.newBasicBlock("init.done")
+		v := emitLoad(init, initguard)
 		emitIfLoc(init, initguard.Pos())
-		emitIf(init, emitLoad(init, initguard), done, doinit)
+		emitIf(init, v, done, doinit)
 		init.currentBlock = doinit
 		emitStore(init, initguard, vTrue, token.NoPos)
 

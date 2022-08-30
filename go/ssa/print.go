@@ -384,7 +384,7 @@ func (s *DebugRef) String() string {
 	} else {
 		fileLoc := s.Parent().Prog.Fset.Position(s.Tpos)
 		blkInstrs := s.Block().Instrs
-		lastInstr := blkInstrs[len(blkInstrs)-1]
+		lastInstr := blkInstrs[len(blkInstrs)-2]
 		return fmt.Sprintf("; [if loc]: %s --> %s", lastInstr.String(), fileLoc)
 	}
 }
